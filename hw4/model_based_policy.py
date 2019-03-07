@@ -11,7 +11,7 @@ class ModelBasedPolicy(object):
                  init_dataset,
                  horizon=15,
                  num_random_action_selection=4096,
-                 nn_layers=4):
+                 nn_layers=1):
         self._cost_fn = env.cost_fn
         self._state_dim = env.observation_space.shape[0]
         self._action_dim = env.action_space.shape[0]
@@ -42,9 +42,9 @@ class ModelBasedPolicy(object):
         """
         ### PROBLEM 1
         ### YOUR CODE HERE
-        state_ph = tf.placeholder(tf.float64, [None] + [self._state_dim])
-        action_ph = tf.placeholder(tf.float64, [None] + [self._action_dim])
-        next_state_ph = tf.placeholder(tf.float64, [None] + [self._state_dim])
+        state_ph = tf.placeholder(tf.float32, [None] + [self._state_dim])
+        action_ph = tf.placeholder(tf.float32, [None] + [self._action_dim])
+        next_state_ph = tf.placeholder(tf.float32, [None] + [self._state_dim])
         return state_ph, action_ph, next_state_ph
 
     def _dynamics_func(self, state, action, reuse):
@@ -130,7 +130,19 @@ class ModelBasedPolicy(object):
         """
         ### PROBLEM 2
         ### YOUR CODE HERE
-
+        action_sequences = tf.random_uniform(dtype=tf.float32, shape=[self._num_random_action_selection, self._horizon, self._action_dim], minval=self._action_space_low, maxval=self._action_space_high)
+        costs = []
+        for i in range(self._num_random_action_selection):
+            cost = tf.zeros([1], tf.float32)
+            current_state = state_ph
+            for j in range(self._horizon):
+                action = action_sequences[i, j, :][None,]
+                next_state = self._dynamics_func(current_state, action, False)
+                cost += self._cost_fn(current_state, action, next_state)
+                current_state = next_state
+            costs.append(cost)
+        best_sequence_index = tf.argmax(costs)
+        best_action = action_sequences[best_sequence_index, 0, :, :]
 
         return best_action
 
@@ -149,7 +161,7 @@ class ModelBasedPolicy(object):
         loss, optimizer = self._setup_training(state_ph, next_state_ph, next_state_pred)
         ### PROBLEM 2
         ### YOUR CODE HERE
-        best_action = None
+        best_action = self._setup_action_selection(state_ph)
 
         sess.run(tf.global_variables_initializer())
 
@@ -202,7 +214,7 @@ class ModelBasedPolicy(object):
 
         ### PROBLEM 2
         ### YOUR CODE HERE
-        raise NotImplementedError
+        best_action = self._sess.run(self._best_action, feed_dict={self.state_ph:state})
 
         assert np.shape(best_action) == (self._action_dim,)
         return best_action

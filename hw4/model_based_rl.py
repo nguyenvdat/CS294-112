@@ -18,7 +18,7 @@ class ModelBasedRL(object):
                  num_onplicy_iters=10,
                  num_onpolicy_rollouts=10,
                  # training_epochs=60,
-                 training_epochs=100,
+                 training_epochs=1,
                  training_batch_size=512,
                  render=False,
                  mpc_horizon=15,
@@ -172,15 +172,15 @@ class ModelBasedRL(object):
         logger.info('Training policy....')
         ### PROBLEM 2
         ### YOUR CODE HERE
-        raise NotImplementedError
+        self._train_policy(self._random_dataset)
 
         logger.info('Evaluating policy...')
         ### PROBLEM 2
         ### YOUR CODE HERE
-        raise NotImplementedError
+        eval_dataset = self._gather_rollouts(self._policy, self._num_onpolicy_rollouts)
 
         logger.info('Trained policy')
-        self._log(eval_dataset)
+        #self._log(eval_dataset)
 
     def run_q3(self):
         """
