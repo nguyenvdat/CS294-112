@@ -11,7 +11,7 @@ class ModelBasedPolicy(object):
                  init_dataset,
                  horizon=15,
                  num_random_action_selection=4096,
-                 nn_layers=1):
+                 nn_layers=3):
         self._cost_fn = env.cost_fn
         self._state_dim = env.observation_space.shape[0]
         self._action_dim = env.action_space.shape[0]
@@ -70,7 +70,7 @@ class ModelBasedPolicy(object):
         norm_state = utils.normalize(state, self._init_dataset.state_mean, self._init_dataset.state_std)
         norm_action = utils.normalize(action, self._init_dataset.action_mean, self._init_dataset.action_std)
         input_layer = tf.concat([norm_state, norm_action], axis=1)
-        delta_state_pred = utils.build_mlp(input_layer, self._state_dim, '',self._nn_layers, reuse=reuse)
+        delta_state_pred = utils.build_mlp(input_layer, self._state_dim, 'mlp',self._nn_layers, reuse=reuse)
         next_state_pred = utils.unnormalize(delta_state_pred, self._init_dataset.state_mean, self._init_dataset.state_std) + state
         return next_state_pred
 
@@ -131,19 +131,17 @@ class ModelBasedPolicy(object):
         ### PROBLEM 2
         ### YOUR CODE HERE
         action_sequences = tf.random_uniform(dtype=tf.float32, shape=[self._num_random_action_selection, self._horizon, self._action_dim], minval=self._action_space_low, maxval=self._action_space_high)
-        costs = []
-        for i in range(self._num_random_action_selection):
-            cost = tf.zeros([1], tf.float32)
-            current_state = state_ph
-            for j in range(self._horizon):
-                action = action_sequences[i, j, :][None,]
-                next_state = self._dynamics_func(current_state, action, False)
-                cost += self._cost_fn(current_state, action, next_state)
-                current_state = next_state
-            costs.append(cost)
-        best_sequence_index = tf.argmax(costs)
-        best_action = action_sequences[best_sequence_index, 0, :, :]
-
+        horizon_cost = []
+        current_states = tf.tile(state_ph, [self._num_random_action_selection, 1])
+        for j in range(self._horizon):
+            actions = action_sequences[:, j, :]
+            next_states = self._dynamics_func(current_states, actions, reuse=tf.AUTO_REUSE)
+            horizon_cost.append(self._cost_fn(current_states, actions, next_states))
+            current_states = next_states
+        horizon_cost = tf.stack(horizon_cost, 1)
+        sequence_cost = tf.reduce_sum(horizon_cost, 1)
+        best_action_index = tf.argmin(sequence_cost)
+        best_action = action_sequences[best_action_index, 0]
         return best_action
 
     def _setup_graph(self):
@@ -157,11 +155,12 @@ class ModelBasedPolicy(object):
         ### PROBLEM 1
         ### YOUR CODE HERE
         state_ph, action_ph, next_state_ph = self._setup_placeholders()
-        next_state_pred = self._dynamics_func(state_ph, action_ph, False)
+        next_state_pred = self._dynamics_func(state_ph, action_ph, reuse=tf.AUTO_REUSE)
         loss, optimizer = self._setup_training(state_ph, next_state_ph, next_state_pred)
         ### PROBLEM 2
         ### YOUR CODE HERE
         best_action = self._setup_action_selection(state_ph)
+        # best_action = None
 
         sess.run(tf.global_variables_initializer())
 
@@ -181,6 +180,10 @@ class ModelBasedPolicy(object):
         # print(eval1)
         _, loss = self._sess.run([self._optimizer, self._loss], feed_dict={self._state_ph:states, self._action_ph:actions, self._next_state_ph:next_states})
         # print(loss)
+        return loss
+
+    def eval_loss(self, states, actions, next_states):
+        loss = self._sess.run(self._loss, feed_dict={self._state_ph:states, self._action_ph:actions, self._next_state_ph:next_states})
         return loss
 
     def predict(self, state, action):
@@ -214,7 +217,7 @@ class ModelBasedPolicy(object):
 
         ### PROBLEM 2
         ### YOUR CODE HERE
-        best_action = self._sess.run(self._best_action, feed_dict={self.state_ph:state})
+        best_action = self._sess.run(self._best_action, feed_dict={self._state_ph:state[None, ]})
 
         assert np.shape(best_action) == (self._action_dim,)
         return best_action

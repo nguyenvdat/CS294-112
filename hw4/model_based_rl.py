@@ -14,11 +14,13 @@ class ModelBasedRL(object):
     def __init__(self,
                  env,
                  num_init_random_rollouts=10,
+                 # num_init_random_rollouts=1,
                  max_rollout_length=500,
                  num_onplicy_iters=10,
+                 # num_onpolicy_rollouts=10,
                  num_onpolicy_rollouts=10,
-                 # training_epochs=60,
-                 training_epochs=1,
+                 training_epochs=1000,
+                 # training_epochs=1,
                  training_batch_size=512,
                  render=False,
                  mpc_horizon=15,
@@ -35,12 +37,14 @@ class ModelBasedRL(object):
         logger.info('Gathering random dataset')
         self._random_dataset = self._gather_rollouts(utils.RandomPolicy(env),
                                                      num_init_random_rollouts)
+        self._random_dataset_test = self._gather_rollouts(utils.RandomPolicy(env), 2)
 
         logger.info('Creating policy')
         self._policy = ModelBasedPolicy(env,
                                         self._random_dataset,
                                         horizon=mpc_horizon,
-                                        num_random_action_selection=num_random_action_selection)
+                                        num_random_action_selection=num_random_action_selection,
+                                        nn_layers=nn_layers)
 
         timeit.reset()
         timeit.start('total')
@@ -49,6 +53,7 @@ class ModelBasedRL(object):
         dataset = utils.Dataset()
 
         for _ in range(num_rollouts):
+        # for _ in range(1):
             state = self._env.reset()
             done = False
             t = 0
@@ -90,7 +95,10 @@ class ModelBasedRL(object):
             for states, actions, next_states, _, _ in dataset.random_iterator(self._training_batch_size):
                 loss = self._policy.train_step(states, actions, next_states)
                 losses.append(loss)
-                print(loss)
+            # self._random_dataset_test = self._gather_rollouts(self._policy, 2)
+            # for states, actions, next_states, _, _ in self._random_dataset_test.random_iterator(len(self._random_dataset_test)):
+            #     eval_loss = self._policy.eval_loss(states, actions, next_states)
+            #     print("Test loss: " + str(eval_loss))
 
         logger.record_tabular('TrainingLossStart', losses[0])
         logger.record_tabular('TrainingLossFinal', losses[-1])
@@ -180,7 +188,7 @@ class ModelBasedRL(object):
         eval_dataset = self._gather_rollouts(self._policy, self._num_onpolicy_rollouts)
 
         logger.info('Trained policy')
-        #self._log(eval_dataset)
+        self._log(eval_dataset)
 
     def run_q3(self):
         """
@@ -201,16 +209,16 @@ class ModelBasedRL(object):
             ### PROBLEM 3
             ### YOUR CODE HERE
             logger.info('Training policy...')
-            raise NotImplementedError
+            self._train_policy(dataset)
 
             ### PROBLEM 3
             ### YOUR CODE HERE
             logger.info('Gathering rollouts...')
-            raise NotImplementedError
+            new_dataset = self._gather_rollouts(self._policy, self._num_onpolicy_rollouts)
 
             ### PROBLEM 3
             ### YOUR CODE HERE
             logger.info('Appending dataset...')
-            raise NotImplementedError
+            dataset.append(new_dataset)
 
             self._log(new_dataset)
