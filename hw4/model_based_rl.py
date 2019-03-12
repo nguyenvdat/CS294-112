@@ -18,7 +18,7 @@ class ModelBasedRL(object):
                  max_rollout_length=500,
                  num_onplicy_iters=10,
                  # num_onpolicy_rollouts=10,
-                 num_onpolicy_rollouts=10,
+                 num_onpolicy_rollouts=3,
                  training_epochs=1000,
                  # training_epochs=1,
                  training_batch_size=512,

@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import tensorflow_probability as tfp
 
 import utils
 
@@ -130,18 +131,54 @@ class ModelBasedPolicy(object):
         """
         ### PROBLEM 2
         ### YOUR CODE HERE
-        action_sequences = tf.random_uniform(dtype=tf.float32, shape=[self._num_random_action_selection, self._horizon, self._action_dim], minval=self._action_space_low, maxval=self._action_space_high)
-        horizon_cost = []
-        current_states = tf.tile(state_ph, [self._num_random_action_selection, 1])
-        for j in range(self._horizon):
-            actions = action_sequences[:, j, :]
-            next_states = self._dynamics_func(current_states, actions, reuse=tf.AUTO_REUSE)
-            horizon_cost.append(self._cost_fn(current_states, actions, next_states))
-            current_states = next_states
-        horizon_cost = tf.stack(horizon_cost, 1)
-        sequence_cost = tf.reduce_sum(horizon_cost, 1)
-        best_action_index = tf.argmin(sequence_cost)
-        best_action = action_sequences[best_action_index, 0]
+        # action_sequences = tf.random_uniform(dtype=tf.float32, shape=[self._num_random_action_selection, self._horizon, self._action_dim], minval=self._action_space_low, maxval=self._action_space_high)
+        # horizon_cost = []
+        # current_states = tf.tile(state_ph, [self._num_random_action_selection, 1])
+        # for j in range(self._horizon):
+        #     actions = action_sequences[:, j, :]
+        #     next_states = self._dynamics_func(current_states, actions, reuse=tf.AUTO_REUSE)
+        #     horizon_cost.append(self._cost_fn(current_states, actions, next_states))
+        #     current_states = next_states
+        # horizon_cost = tf.stack(horizon_cost, 1)
+        # sequence_cost = tf.reduce_sum(horizon_cost, 1)
+        # best_action_index = tf.argmin(sequence_cost)
+        # best_action = action_sequences[best_action_index, 0]
+
+        tfd = tfp.distributions
+        action_range = self._action_space_high - self._action_space_low
+        t = tf.constant(0)
+        maxits = 100
+        number_sample = 100
+        number_max_sample = 10
+        epsilon = 1e-3
+        mean = tf.ones(shape=[self._horizon, self._action_dim], dtype=tf.float32) * np.tile(action_range, [self._horizon, 1]) / 2 
+        std = tf.ones(shape=[self._action_dim], dtype=tf.float32) * np.tile(action_range, [self._horizon, 1]) / 2
+
+        def body(t, mean, std):
+            current_states = tf.tile(state_ph, [number_sample, 1])
+            horizon_cost = []
+            dist = tfd.Normal(loc=mean, scale=std)
+            sample_actions = tf.clip_by_value(dist.sample(number_sample), np.tile(self._action_space_low, [number_sample, self._horizon, 1]), np.tile(self._action_space_high, [number_sample, self._horizon, 1]))
+            for j in range(self._horizon):
+                actions = sample_actions[:, j, :]
+                next_states = self._dynamics_func(current_states, actions, reuse=tf.AUTO_REUSE)
+                horizon_cost.append(self._cost_fn(current_states, actions, next_states))
+                current_states = next_states
+            horizon_cost = tf.stack(horizon_cost, 1)
+            sequence_cost = tf.reduce_sum(horizon_cost, 1)
+            _, best_sample_index = tf.math.top_k(-sequence_cost, k=number_max_sample)
+            best_sample_actions = tf.gather(sample_actions, best_sample_index)
+            mean, variance = tf.nn.moments(best_sample_actions, 0)
+            std = tf.math.sqrt(variance)
+            return tf.add(t, 1), mean, std
+
+        def condition(t, mean, std):
+            return tf.math.logical_and(tf.math.less(t, maxits), tf.math.greater(tf.reduce_mean(std), epsilon))
+            # return tf.math.logical_and(tf.math.less(t, maxits), tf.math.less(t, maxits))
+
+        t, mean, std = tf.while_loop(condition, body, [t, mean, std])
+        best_action = mean[0]
+        print(best_action)
         return best_action
 
     def _setup_graph(self):
