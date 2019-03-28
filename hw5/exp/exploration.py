@@ -31,16 +31,17 @@ class Exploration(object):
         """
             ### PROBLEM 1
             ### YOUR CODE HERE
+
             args:
                 states: (bsize, ob_dim)
+
             TODO:
                 Use self.compute_reward_bonus to compute the reward
                 bonus and then modify the rewards with the bonus
                 and store that in new_rewards, which you will return
         """
-        raise NotImplementedError
-        bonus = None
-        new_rewards = None
+        bonus = self.compute_reward_bonus(states)
+        new_rewards = rewards + self.bonus_coeff * bonus
         return new_rewards
 
 class DiscreteExploration(Exploration):
@@ -51,29 +52,34 @@ class DiscreteExploration(Exploration):
         """
             ### PROBLEM 1
             ### YOUR CODE HERE
+
             args:
                 states: (bsize, ob_dim)
         """
-        raise NotImplementedError
+        for state in states:
+            self.density_model.update_count(state, 1)
+
 
     def bonus_function(self, count):
         """
             ### PROBLEM 1
             ### YOUR CODE HERE
+
             args:
                 count: np array (bsize)
         """
-        raise NotImplementedError
+        return np.power(count, -1/2)
 
     def compute_reward_bonus(self, states):
         """
             ### PROBLEM 1
             ### YOUR CODE HERE
+
             args:
                 states: (bsize, ob_dim)
         """
-        count = raise NotImplementedError
-        bonus = raise NotImplementedError
+        count = self.density_model.get_count(states)
+        bonus = self.bonus_function(count)
         return bonus
 
 
@@ -90,6 +96,7 @@ class ContinuousExploration(Exploration):
         """
             ### PROBLEM 2
             ### YOUR CODE HERE
+
             args:
                 prob: np array (bsize,)
         """

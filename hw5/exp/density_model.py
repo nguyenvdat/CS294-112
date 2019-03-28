@@ -27,45 +27,53 @@ class Histogram(Density_Model):
         """
             ### PROBLEM 1
             ### YOUR CODE HERE
+
             args:
                 state: numpy array
                 increment: int
+
             TODO:
                 1. increment the entry "bin_name" in self.hist by "increment"
                 2. increment self.total by "increment" 
         """
         bin_name = self.preprocessor(state)
-        raise NotImplementedError
+        self.hist[bin_name] += increment
+        self.total += increment
 
     def get_count(self, states):
         """
             ### PROBLEM 1
             ### YOUR CODE HERE
+
             args:
                 states: numpy array (bsize, ob_dim)
+
             returns: 
                 counts: numpy_array (bsize)
+
             TODO:
                 For each state in states:
                     1. get the bin_name using self.preprocessor
                     2. get the value of self.hist with key bin_name
         """
-        raise NotImplementedError
+        counts = np.array([self.hist[self.preprocessor(state)] for state in states])
         return counts
 
     def get_prob(self, states):
         """
             ### PROBLEM 1
             ### YOUR CODE HERE
+
             args:
                 states: numpy array (bsize, ob_dim)
     
             returns:
                 return the probabilities of the state (bsize)
+
             NOTE:
                 remember to normalize by float(self.total)
         """
-        raise NotImplementedError
+        probs = self.get_count(states) / float(self.total)
         return probs
 
 class RBF(Density_Model):
@@ -82,8 +90,10 @@ class RBF(Density_Model):
         """
             ### PROBLEM 2
             ### YOUR CODE HERE
+
             args:
                 data: list of states of shape (ob_dim)
+
             TODO:
                 We simply assign self.means to be equal to the data points.
                 Let the length of the data be B
@@ -98,14 +108,17 @@ class RBF(Density_Model):
         """
             ### PROBLEM 2
             ### YOUR CODE HERE
+
             given:
                 states: (b, ob_dim)
                     where b is the number of states we wish to get the
                     probability of
+
                 self.means: (B, ob_dim)
                     where B is the number of states in the replay buffer
                     we will plop a Gaussian distribution on top of each
                     of self.means with a std of self.sigma
+
             TODO:
                 1. Compute deltas: for each state in states, compute the
                     difference between that state and every mean in self.means.
@@ -127,19 +140,19 @@ class RBF(Density_Model):
             assert states.ndim == self.means.ndim and ob_dim == replay_dim
 
             # 1. Compute deltas
-            deltas = raise NotImplementedError
+            # deltas = raise NotImplementedError
             assert deltas.shape == (b, B, ob_dim)
 
             # 2. Euclidean distance
-            euc_dists = raise NotImplementedError
+            # euc_dists = raise NotImplementedError
             assert euc_dists.shape == (b, B)
 
             # Gaussian
-            gaussians = raise NotImplementedError
+            # gaussians = raise NotImplementedError
             assert gaussians.shape == (b, B)
 
             # 4. Average
-            densities = raise NotImplementedError
+            # densities = raise NotImplementedError
             assert densities.shape == (b,)
 
             return densities
@@ -156,6 +169,7 @@ class Exemplar(Density_Model):
         """
             ### PROBLEM 3
             ### YOUR CODE HERE
+
             TODO:
                 1. self.log_likelihood. shape: (batch_size)
                     - use tf.squeeze
@@ -172,6 +186,7 @@ class Exemplar(Density_Model):
                         log_likelihood, and average over the batch
                 5. self.update_op: use the AdamOptimizer with self.learning_rate 
                     to minimize the -self.elbo (Note the negative sign!)
+
             Hint:
                 https://www.tensorflow.org/probability/api_docs/python/tfp/distributions
         """
@@ -198,61 +213,70 @@ class Exemplar(Density_Model):
         """
             ### PROBLEM 3
             ### YOUR CODE HERE
+
             args:
                 state: tf variable
                 z_size: output dimension of the encoder network
                 scope: scope name
                 n_layers: number of layers of the encoder network
                 hid_size: hidden dimension of encoder network
+
             TODO:
                 1. z_mean: the output of a neural network that takes the state as input,
                     has output dimension z_size, n_layers layers, and hidden 
                     dimension hid_size
                 2. z_logstd: a trainable variable, initialized to 0
                     shape (z_size,)
+
             Hint: use build_mlp
         """
-        z_mean = raise NotImplementedError
-        z_logstd = raise NotImplementedError
+        # z_mean = raise NotImplementedError
+        # z_logstd = raise NotImplementedError
         return tfp.distributions.MultivariateNormalDiag(loc=z_mean, scale_diag=tf.exp(z_logstd))
 
     def make_prior(self, z_size):
         """
             ### PROBLEM 3
             ### YOUR CODE HERE
+
             args:
                 z_size: output dimension of the encoder network
+
             TODO:
                 prior_mean and prior_logstd are for a standard normal distribution
                     both have dimension z_size
         """
-        prior_mean = raise NotImplementedError
-        prior_logstd = raise NotImplementedError
+        # prior_mean = raise NotImplementedError
+        # prior_logstd = raise NotImplementedError
         return tfp.distributions.MultivariateNormalDiag(loc=prior_mean, scale_diag=tf.exp(prior_logstd))
 
     def make_discriminator(self, z, output_size, scope, n_layers, hid_size):
         """
             ### PROBLEM 3
             ### YOUR CODE HERE
+
             args:
                 z: input to to discriminator network
                 output_size: output dimension of discriminator network
                 scope: scope name
                 n_layers: number of layers of discriminator network
                 hid_size: hidden dimension of discriminator network 
+
             TODO:
                 1. logit: the output of a neural network that takes z as input,
                     has output size output_size, n_layers layers, and hidden
                     dimension hid_size
+
             Hint: use build_mlp
         """
-        logit = raise NotImplementedError
+        # logit = raise NotImplementedError
         return tfp.distributions.Bernoulli(logit)
 
     def forward_pass(self, state1, state2):
         """
             ### PROBLEM 3
             ### YOUR CODE HERE
+
             args:
                 state1: tf variable
                 state2: tf variable
@@ -261,10 +285,12 @@ class Exemplar(Density_Model):
             encoder2: tfp.distributions.MultivariateNormalDiag distribution
             prior: tfp.distributions.MultivariateNormalDiag distribution
             discriminator: tfp.distributions.Bernoulli distribution
+
             TODO:
                 1. z1: sample from encoder1
                 2. z2: sample from encoder2
                 3. z: concatenate z1 and z2
+
             Hint: 
                 https://www.tensorflow.org/probability/api_docs/python/tfp/distributions
         """
@@ -281,9 +307,9 @@ class Exemplar(Density_Model):
         prior = self.make_prior(self.hid_dim/2)
 
         # Sampled Latent
-        z1 = raise NotImplementedError
-        z2 = raise NotImplementedError
-        z = raise NotImplementedError
+        # z1 = raise NotImplementedError
+        # z2 = raise NotImplementedError
+        # z = raise NotImplementedError
 
         # Discriminator
         discriminator = make_discriminator(z, 1, 'discriminator', n_layers=2, hid_size=self.hid_dim)
@@ -293,10 +319,12 @@ class Exemplar(Density_Model):
         """
             ### PROBLEM 3
             ### YOUR CODE HERE
+
             args:
                 state1: np array (batch_size, ob_dim)
                 state2: np array (batch_size, ob_dim)
                 target: np array (batch_size, 1)
+
             TODO:
                 train the density model and return
                     ll: log_likelihood
@@ -313,11 +341,14 @@ class Exemplar(Density_Model):
         """
             ### PROBLEM 3
             ### YOUR CODE HERE
+
             args:
                 state1: np array (batch_size, ob_dim)
                 state2: np array (batch_size, ob_dim)
+
             TODO:
                 likelihood of state1 == state2
+
             Hint:
                 what should be the value of self.discrim_target?
         """
@@ -334,6 +365,7 @@ class Exemplar(Density_Model):
         
             args:
                 state: np array (batch_size, ob_dim)
+
             TODO:
                 likelihood: 
                     evaluate the discriminator D(x,x) on the same input
@@ -341,8 +373,8 @@ class Exemplar(Density_Model):
                     compute the probability density of x from the discriminator
                     likelihood (see homework doc)
         """
-        likelihood = raise NotImplementedError
+        # likelihood = raise NotImplementedError
         # avoid divide by 0 and log(0)
         likelihood = np.clip(np.squeeze(likelihood), 1e-5, 1-1e-5)
-        prob = raise NotImplementedError
+        # prob = raise NotImplementedError
         return prob

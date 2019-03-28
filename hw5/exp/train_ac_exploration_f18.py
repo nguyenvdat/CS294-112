@@ -33,8 +33,10 @@ def build_mlp(input_placeholder, output_size, scope, n_layers, size, activation=
             size: dimension of the hidden layer
             activation: activation of the hidden layers
             output_activation: activation of the ouput layers
+
         returns:
             output placeholder of the network (the result of a forward pass) 
+
         Hint: use tf.layers.dense    
     """
     output_placeholder = input_placeholder
@@ -90,6 +92,7 @@ class Agent(object):
             Placeholders for batch batch observations / actions / advantages in actor critic
             loss function.
             See Agent.build_computation_graph for notation
+
             returns:
                 sy_ob_no: placeholder for observations
                 sy_ac_na: placeholder for actions
@@ -106,18 +109,23 @@ class Agent(object):
     def policy_forward_pass(self, sy_ob_no):
         """ Constructs the symbolic operation for the policy network outputs,
             which are the parameters of the policy distribution p(a|s)
+
             arguments:
                 sy_ob_no: (batch_size, self.ob_dim)
+
             returns:
                 the parameters of the policy.
+
                 if discrete, the parameters are the logits of a categorical distribution
                     over the actions
                     sy_logits_na: (batch_size, self.ac_dim)
+
                 if continuous, the parameters are a tuple (mean, log_std) of a Gaussian
                     distribution over actions. log_std should just be a trainable
                     variable, not a network output.
                     sy_mean: (batch_size, self.ac_dim)
                     sy_logstd: (self.ac_dim,)
+
             Hint: use the 'build_mlp' function to output the logits (in the discrete case)
                 and the mean (in the continuous case).
                 Pass in self.n_layers for the 'n_layers' argument, and
@@ -134,6 +142,7 @@ class Agent(object):
     def sample_action(self, policy_parameters):
         """ Constructs a symbolic operation for stochastically sampling from the policy
             distribution
+
             arguments:
                 policy_parameters
                     if discrete: logits of a categorical distribution over actions 
@@ -141,10 +150,12 @@ class Agent(object):
                     if continuous: (mean, log_std) of a Gaussian distribution over actions
                         sy_mean: (batch_size, self.ac_dim)
                         sy_logstd: (self.ac_dim,)
+
             returns:
                 sy_sampled_ac: 
                     if discrete: (batch_size)
                     if continuous: (batch_size, self.ac_dim)
+
             Hint: for the continuous case, use the reparameterization trick:
                  The output from a Gaussian distribution with mean 'mu' and std 'sigma' is
         
@@ -163,6 +174,7 @@ class Agent(object):
     def get_log_prob(self, policy_parameters, sy_ac_na):
         """ Constructs a symbolic operation for computing the log probability of a set of actions
             that were actually taken according to the policy
+
             arguments:
                 policy_parameters
                     if discrete: logits of a categorical distribution over actions 
@@ -170,9 +182,12 @@ class Agent(object):
                     if continuous: (mean, log_std) of a Gaussian distribution over actions
                         sy_mean: (batch_size, self.ac_dim)
                         sy_logstd: (self.ac_dim,)
+
                 sy_ac_na: (batch_size, self.ac_dim)
+
             returns:
                 sy_logprob_n: (batch_size)
+
             Hint:
                 For the discrete case, use the log probability under a categorical distribution.
                 For the continuous case, use the log probability under a multivariate gaussian.
@@ -202,6 +217,7 @@ class Agent(object):
             
             Note: batch self.size /n/ is defined at runtime, and until then, the shape for that axis
             is None
+
             ----------------------------------------------------------------------------------
             loss: a function of self.sy_logprob_n and self.sy_adv_n that we will differentiate
                 to get the policy gradient.
@@ -277,8 +293,10 @@ class Agent(object):
     def estimate_advantage(self, ob_no, next_ob_no, re_n, terminal_n):
         """
             Estimates the advantage function value for each timestep.
+
             let sum_of_path_lengths be the sum of the lengths of the paths sampled from 
                 Agent.sample_trajectories
+
             arguments:
                 ob_no: shape: (sum_of_path_lengths, ob_dim)
                 next_ob_no: shape: (sum_of_path_lengths, ob_dim). The observation after taking one step forward
@@ -286,6 +304,7 @@ class Agent(object):
                     the reward for each timestep
                 terminal_n: length: sum_of_path_lengths. Each element in terminal_n is either 1 if the episode ended
                     at that timestep of 0 if the episode did not end
+
             returns:
                 adv_n: shape: (sum_of_path_lengths). A single vector for the estimated 
                     advantages whose length is the sum of the lengths of the paths
@@ -302,9 +321,11 @@ class Agent(object):
     def update_critic(self, ob_no, next_ob_no, re_n, terminal_n):
         """
             Update the parameters of the critic.
+
             let sum_of_path_lengths be the sum of the lengths of the paths sampled from
                 Agent.sample_trajectories
             let num_paths be the number of paths sampled from Agent.sample_trajectories
+
             arguments:
                 ob_no: shape: (sum_of_path_lengths, ob_dim)
                 next_ob_no: shape: (sum_of_path_lengths, ob_dim). The observation after taking one step forward
@@ -312,6 +333,7 @@ class Agent(object):
                     the reward for each timestep
                 terminal_n: length: sum_of_path_lengths. Each element in terminal_n is either 1 if the episode ended
                     at that timestep of 0 if the episode did not end
+
             returns:
                 nothing
         """
@@ -325,13 +347,16 @@ class Agent(object):
     def update_actor(self, ob_no, ac_na, adv_n):
         """ 
             Update the parameters of the policy.
+
             arguments:
                 ob_no: shape: (sum_of_path_lengths, ob_dim)
                 ac_na: shape: (sum_of_path_lengths).
                 adv_n: shape: (sum_of_path_lengths). A single vector for the estimated
                     advantages whose length is the sum of the lengths of the paths
+
             returns:
                 nothing
+
         """
         self.sess.run(self.actor_update_op,
             feed_dict={self.sy_ob_no: ob_no, self.sy_ac_na: ac_na, self.sy_adv_n: adv_n})
@@ -515,14 +540,18 @@ def train_AC(
             elif dm == 'hist' or dm == 'rbf':
                 ### PROBLEM 1
                 ### YOUR CODE HERE
-                raise NotImplementedError
+                exploration.fit_density_model(ob_no)
             else:
                 assert False
 
             # 2. Modify the reward
             ### PROBLEM 1
             ### YOUR CODE HERE
-            raise NotImplementedError
+            re_n = exploration.modify_reward(old_re_n, ob_no)
+            # print('old re: ')
+            # print(old_re_n[0:10])
+            # print('new re: ')
+            # print(re_n[0: 10])
 
             print('average state', np.mean(ob_no, axis=0))
             print('average action', np.mean(ac_na, axis=0))
