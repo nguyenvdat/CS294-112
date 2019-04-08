@@ -75,6 +75,10 @@ def build_rnn(x, h, output_size, scope, n_layers, size, activation=tf.tanh, outp
     #                           ----------PROBLEM 2----------
     #====================================================================================#
     # YOUR CODE HERE
+    embedded_x = build_mlp(x, size, scope, n_layers, size, activation)
+    gru_cell = tf.nn.rnn_cell.GRUCell(output_size, activation, reuse=tf.AUTO_REUSE)
+    outputs, state = tf.nn.dynamic_rnn(gru_cell, embedded_x, initial_state=h, scope=scope)
+    return outputs[:, -1, :], state
 
 def build_policy(x, h, output_size, scope, n_layers, size, gru_size, recurrent=True, activation=tf.tanh, output_activation=None):
     """
@@ -367,6 +371,7 @@ class Agent(object):
         meta_obs = np.zeros((num_samples + self.history + 1, self.meta_ob_dim))
         rewards = []
 
+        hidden = np.zeros((1, self.gru_size), dtype=np.float32)
         while True:
             if animate_this_episode:
                 env.render()
@@ -377,26 +382,31 @@ class Agent(object):
                 # first meta ob has only the observation
                 # set a, r, d to zero, construct first meta observation in meta_obs
                 # YOUR CODE HERE
-
+                ac = np.zeros(self.ac_dim)
+                rew = np.zeros(self.reward_dim)
+                done = np.zeros(self.terminal_dim)
+                meta_obs[steps] = np.concatenate([ob, ac, rew, done])
                 steps += 1
 
             # index into the meta_obs array to get the window that ends with the current timestep
             # please name the windowed observation `in_` for compatibilty with the code that adds to the replay buffer (lines 418, 420)
             # YOUR CODE HERE
-
-            hidden = np.zeros((1, self.gru_size), dtype=np.float32)
-
+            in_ = meta_obs[:steps + 1]
+            npad = ((self.history - steps - 1, 0), (0, 0))
+            in_ = np.pad(in_, pad_width=npad, mode='constant', constant_values=0)
             # get action from the policy
             # YOUR CODE HERE
-
+            ac = self.sess.run(self.sy_sampled_ac, feed_dict={self.sy_ob_no: in_[None, :], self.sy_hidden: hidden})
+            ac = ac[0]
             # step the environment
             # YOUR CODE HERE
-
+            ob, rew, done, _ = env.step(ac)
             ep_steps += 1
 
             done = bool(done) or ep_steps == self.max_path_length
             # construct the meta-observation and add it to meta_obs
             # YOUR CODE HERE
+            meta_obs[steps] = np.concatenate([ob, ac, np.array([rew]), np.array([done], dtype=np.float32)])
 
             rewards.append(rew)
             steps += 1
