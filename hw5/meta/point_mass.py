@@ -28,7 +28,18 @@ class PointEnv(Env):
         #====================================================================================#
         # YOUR CODE HERE
         x = np.random.uniform(-10, 10)
-        y = np.random.uniform(-10, 10)
+        while True:
+            y = np.random.uniform(-10, 10)
+            if is_evaluation: 
+                if np.floor(x) % 2 == 0 and np.floor(y) % 2 == 0:
+                    break
+                if np.floor(x) % 2 != 0 and np.floor(y) % 2 != 0:
+                    break
+            if not is_evaluation:
+                if np.floor(x) % 2 == 0 and np.floor(y) % 2 != 0:
+                    break
+                if np.floor(x) % 2 != 0 and np.floor(y) % 2 == 0:
+                    break
         self._goal = np.array([x, y])
 
     def reset(self):
